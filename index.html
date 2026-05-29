@@ -253,7 +253,7 @@ function Dashboard({ state, bucketStats, totals, onBucketPress, onAddExpense, on
     .map(e => { const b = buckets.find(bk => bk.id===e.bucketId); return {...e, icon: b?b.icon:'💫', bName: b?b.name:'Other'}; });
 
   return (
-    <div className="scroll" style={{ height:'100vh', background:'#fff5ee', paddingBottom:120 }}>
+    <div className="scroll" style={{ height:'100vh', background:'#fff5ee', paddingBottom:180 }}>
       <div style={{ height:'env(safe-area-inset-top,44px)' }} />
 
       {/* Header */}
@@ -419,7 +419,7 @@ function BucketDetail({ bucket, stats, onBack, onAddExpense, onExpensePress }) {
   const avgVisit   = visitCount>0 ? stats.monthSpent/visitCount : 0;
 
   return (
-    <div className="scroll" style={{ height:'100vh', paddingBottom:120 }}>
+    <div className="scroll" style={{ height:'100vh', paddingBottom:180 }}>
       <div style={{ height:'env(safe-area-inset-top,44px)', background:bucket.color }} />
 
       {/* Color hero */}
@@ -498,7 +498,7 @@ function BucketDetail({ bucket, stats, onBack, onAddExpense, onExpensePress }) {
 function ManageBuckets({ state, bucketStats, onBucketEdit, onAddBucket, onClose }) {
   const totalMonthly = state.buckets.reduce((s,b) => s+b.monthly, 0);
   return (
-    <div className="scroll" style={{ height:'100vh', background:'#fff5ee', paddingBottom:120 }}>
+    <div className="scroll" style={{ height:'100vh', background:'#fff5ee', paddingBottom:180 }}>
       <div style={{ height:'env(safe-area-inset-top,44px)' }} />
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 18px 4px' }}>
         <button onClick={onClose} style={{ fontSize:14, fontWeight:800, color:'#8b6f5e' }}>Done</button>
@@ -718,7 +718,7 @@ function Trends({ state, bucketStats, totals }) {
   const pctUsed    = pct(monthSpent, monthlyBudget);
 
   return (
-    <div className="scroll" style={{ height:'100vh', background:'#fff5ee', paddingBottom:120 }}>
+    <div className="scroll" style={{ height:'100vh', background:'#fff5ee', paddingBottom:180 }}>
       <div style={{ height:'env(safe-area-inset-top,44px)' }} />
       <div style={{ padding:'4px 18px 16px' }}>
         <div style={{ fontSize:13, fontWeight:800, color:'#8b6f5e' }}>Month overview</div>
@@ -841,7 +841,7 @@ function BellaProfile({ state, totals, clearExpenses, updateProfile }) {
 
   return (
     <>
-      <div className="scroll" style={{ height:'100vh', background:'#fff5ee', paddingBottom:120 }}>
+      <div className="scroll" style={{ height:'100vh', background:'#fff5ee', paddingBottom:180 }}>
         <div style={{ height:'env(safe-area-inset-top,44px)' }} />
         <div style={{ padding:'4px 18px 16px' }}>
           <div style={{ fontSize:13, fontWeight:800, color:'#8b6f5e' }}>Settings</div>
