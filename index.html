@@ -220,7 +220,7 @@ function useAppState() {
   }, []);
 
   const clearExpenses = useCallback(() => {
-    setState(s => ({ ...s, expenses: [] }));
+    setState(s => ({ ...s, expenses: [], streakWeeks: 0, lastWeekStart: getWeekStart().toISOString().slice(0, 10) }));
   }, []);
 
   const updateProfile = useCallback((updates) => {
