@@ -1,0 +1,58 @@
+/* Bella's Budget — shared design tokens */
+:root {
+  /* Coral palette (warm + grounded) */
+  --bg: #fff5ee;
+  --card: #ffffff;
+  --card-warm: #fffaf6;
+  --cream: #fbe9d8;
+  --sand: #f4e4c1;
+  --peach: #ffd5c2;
+  --peach-2: #ffb59f;
+  --coral: #ff8a73;
+  --coral-deep: #e85d4f;
+  --coral-ink: #b94436;
+  --rose: #d97a85;
+  --plum: #9c6b8f;
+  --amber: #e8a060;
+  --olive: #a8a566;
+  --sage: #7da882;
+  --sage-deep: #4f7a56;
+  --ink: #3d2419;
+  --ink-2: #5c3d2e;
+  --ink-3: #8b6f5e;
+  --ink-4: #b8a193;
+  --hair: rgba(92, 61, 46, 0.08);
+  --hair-2: rgba(92, 61, 46, 0.14);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: "Nunito", -apple-system, system-ui, sans-serif;
+  background: #f5ede4;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+}
+
+/* Reset for nested phone screens */
+.phone-screen {
+  font-family: "Nunito", -apple-system, system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.phone-screen, .phone-screen * {
+  font-family: "Nunito", -apple-system, system-ui, sans-serif !important;
+}
+
+/* Tabular figures for money */
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Stop scroll bleed inside artboards */
+.phone-screen::-webkit-scrollbar { display: none; }

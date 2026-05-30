@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(gunzip -c \"/Users/joeray/.claude/projects/-Users-joeray-AI-Main-Bellas-Budget/5c73aeb1-41ea-429c-8b30-3229fd81ffb8/tool-results/webfetch-1780008771563-coffty.bin\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx --yes serve --version)",
+      "Bash(gh auth *)",
+      "Bash(git --version)",
+      "Read(//usr/local/bin/**)",
+      "Bash(git config *)",
+      "Read(//Users/joeray/.config/**)",
+      "Read(//Users/joeray/.ssh/**)",
+      "Bash(ssh -T git@github.com)",
+      "Bash(sw_vers -productVersion)",
+      "Bash(curl -sL https://github.com/cli/cli/releases/download/v2.72.0/gh_2.72.0_macOS_arm64.tar.gz -o /tmp/gh.tar.gz)",
+      "Bash(tar -xzf /tmp/gh.tar.gz -C /tmp)",
+      "Bash(/tmp/gh_2.72.0_macOS_arm64/bin/gh --version)",
+      "Bash(curl -sI \"https://github.com/cli/cli/releases/download/v2.72.0/gh_2.72.0_macOS_arm64.tar.gz\")",
+      "Bash(curl -s \"https://api.github.com/repos/cli/cli/releases/latest\")",
+      "Bash(python3 -c \"import sys,json; r=json.load\\(sys.stdin\\); print\\(r['tag_name']\\); [print\\(a['browser_download_url']\\) for a in r['assets'] if 'macOS_arm64.tar.gz' in a['name']]\")",
+      "Bash(python3 -c \"import sys,json; r=json.load\\(sys.stdin\\); [print\\(a['name'], a['browser_download_url']\\) for a in r['assets'] if 'mac' in a['name'].lower\\(\\) or 'darwin' in a['name'].lower\\(\\)]\")",
+      "Bash(curl -sL \"https://github.com/cli/cli/releases/download/v2.93.0/gh_2.93.0_macOS_arm64.zip\" -o /tmp/gh.zip)",
+      "Bash(unzip -q /tmp/gh.zip -d /tmp/gh_cli)",
+      "Bash(/tmp/gh_cli/gh_2.93.0_macOS_arm64/bin/gh --version)",
+      "Bash(/tmp/gh_cli/gh_2.93.0_macOS_arm64/bin/gh auth *)",
+      "Bash(security find-internet-password *)",
+      "Bash(printenv)",
+      "Bash(git init *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git remote *)",
+      "Bash(git push *)"
+    ]
+  }
+}
