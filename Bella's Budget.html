@@ -103,6 +103,38 @@ function makeSeedExpenses() {
 function fmt(n)    { return '$' + Math.round(n).toLocaleString(); }
 function fmtC(n)   { return '$' + parseFloat(n).toFixed(2); }
 function pct(s,b)  { return b > 0 ? Math.min(100, Math.round((s/b)*100)) : 0; }
+function hexToRgba(hex, alpha) {
+  const h = (hex||'#ff8a73').replace('#','');
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function darkenHex(hex, amt = 0.18) {
+  const h = (hex||'#ff8a73').replace('#','');
+  const clamp = v => Math.max(0, Math.min(255, v));
+  const r = clamp(parseInt(h.slice(0,2),16) - Math.round(255*amt));
+  const g = clamp(parseInt(h.slice(2,4),16) - Math.round(255*amt));
+  const b = clamp(parseInt(h.slice(4,6),16) - Math.round(255*amt));
+  return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+
+const THEME_PRESETS = [
+  { light:'#ff8a73', deep:'#e85d4f' }, // Coral
+  { light:'#f48ca8', deep:'#d44873' }, // Rose
+  { light:'#f4b8c8', deep:'#d07090' }, // Petal
+  { light:'#e8a0b4', deep:'#c05e80' }, // Blush
+  { light:'#c49ad6', deep:'#8a52b8' }, // Lavender
+  { light:'#d0b0d8', deep:'#9068b0' }, // Lilac
+  { light:'#89b4d6', deep:'#4a7fad' }, // Ocean
+  { light:'#7ec8e3', deep:'#3a9fbf' }, // Sky
+  { light:'#88c8d8', deep:'#4090b0' }, // Pool
+  { light:'#a8d8c0', deep:'#5a9e80' }, // Mint
+  { light:'#8dc98f', deep:'#4d9c52' }, // Sage
+  { light:'#c8d8a8', deep:'#88a860' }, // Fern
+  { light:'#f5b87c', deep:'#d98136' }, // Amber
+  { light:'#f0b8a0', deep:'#d07050' }, // Peach
+  { light:'#f0d490', deep:'#c8a040' }, // Butter
+  { light:'#e8c8a0', deep:'#c09050' }, // Sand
+];
 
 function getMonthStart() {
   const d = new Date();
@@ -136,7 +168,7 @@ function saveState(s) { try { localStorage.setItem(SK, JSON.stringify(s)); } cat
 function useAppState() {
   const [state, setState] = useState(() => {
     const s = loadState();
-    return s || { buckets: DEFAULT_BUCKETS, expenses: makeSeedExpenses(), streakWeeks: 0, profileEmoji: '🌱', profileName: 'Bella', lastWeekStart: null };
+    return s || { buckets: DEFAULT_BUCKETS, expenses: makeSeedExpenses(), streakWeeks: 0, profileEmoji: '🌱', profileName: 'Bella', lastWeekStart: null, themeLight: '#ff8a73', themeDeep: '#e85d4f' };
   });
 
   useEffect(() => { saveState(state); }, [state]);
@@ -219,6 +251,13 @@ function useAppState() {
     setState(s => ({ ...s, expenses: s.expenses.filter(e => e.id!==id) }));
   }, []);
 
+  const reorderBuckets = useCallback((orderedIds) => {
+    setState(s => ({
+      ...s,
+      buckets: orderedIds.map(id => s.buckets.find(b => b.id === id)).filter(Boolean),
+    }));
+  }, []);
+
   const clearExpenses = useCallback(() => {
     setState(s => ({ ...s, expenses: [], streakWeeks: 0, lastWeekStart: getWeekStart().toISOString().slice(0, 10) }));
   }, []);
@@ -227,23 +266,23 @@ function useAppState() {
     setState(s => ({ ...s, ...updates }));
   }, []);
 
-  return { state, bucketStats, totals, addExpense, updateExpense, updateBucket, addBucket, deleteBucket, deleteExpense, clearExpenses, updateProfile };
+  return { state, bucketStats, totals, addExpense, updateExpense, updateBucket, addBucket, deleteBucket, deleteExpense, clearExpenses, updateProfile, reorderBuckets };
 }
 
 // ─── Tab Bar ───────────────────────────────────────────────────
-function TabBar({ tab, onTab }) {
+function TabBar({ tab, onTab, profileName, themeLight }) {
   const items = [
     { id:'today',   icon:'◐', label:'Today'   },
-    { id:'buckets', icon:'▦', label:'Buckets'  },
-    { id:'trends',  icon:'∿', label:'Trends'   },
-    { id:'bella',   icon:'◯', label:'Bella'    },
+    { id:'buckets', icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3c0 0 2.5-2.5 5-1"/><path d="M12 3c0 0-2.5-2.5-5-1"/><path d="M8.5 6C5 6 3 9 3 12.5 3 17.5 6.5 21 9.5 21c1 0 1.8-.5 2.5-.5s1.5.5 2.5.5C17.5 21 21 17.5 21 12.5 21 9 19 6 15.5 6c-1.2 0-2 .5-3.5.5S9.7 6 8.5 6z"/></svg>, label:'Buckets'  },
+    { id:'trends',  icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 7V3.5"/><path d="M12 5c-1-2-3.5-1.5-3.5 0 0 1.2 1.5 1.8 3.5 1.2"/><path d="M8 7.5C6 9 5.5 12 8.5 14c1 .8 1 2.5-.5 4.5C6 21 7 23 10.5 23c.5.2 1 .3 1.5.3s1-.1 1.5-.3C17 23 18 21 16 18.5c-1.5-2-1.5-3.7-.5-4.5C18.5 12 18 9 16 7.5c-1.2-.8-2.5-.8-4-.8s-2.8 0-4 .8z"/><path d="M11 18.5c-.5-.8-.5.8 0 1.2"/><path d="M13 18.5c-.5-.8-.5.8 0 1.2"/></svg>, label:'Trends'   },
+    { id:'bella',   icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg>, label: profileName || 'Bella' },
   ];
   return (
     <div style={{ position:'fixed', bottom:0, left:0, right:0, padding:'0 14px calc(env(safe-area-inset-bottom,0px) + 10px)', zIndex:100, pointerEvents:'none' }}>
       <div style={{ height:64, borderRadius:22, background:'#3d2419', display:'flex', justifyContent:'space-around', alignItems:'center', boxShadow:'0 12px 28px rgba(61,36,25,0.28)', pointerEvents:'all' }}>
         {items.map(it => (
-          <button key={it.id} onClick={() => onTab(it.id)} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, color: it.id===tab ? '#ff8a73' : 'rgba(255,255,255,0.55)', fontSize:10, fontWeight:800, letterSpacing:0.4, padding:'8px 16px' }}>
-            <div style={{ fontSize:22, lineHeight:1 }}>{it.icon}</div>
+          <button key={it.id} onClick={() => onTab(it.id)} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, color: it.id===tab ? (themeLight||'#ff8a73') : 'rgba(255,255,255,0.55)', fontSize:10, fontWeight:800, letterSpacing:0.4, padding:'8px 16px' }}>
+            <div style={{ fontSize:28, lineHeight:1 }}>{it.icon}</div>
             {it.label.toUpperCase()}
           </button>
         ))}
@@ -253,24 +292,29 @@ function TabBar({ tab, onTab }) {
 }
 
 // ─── FAB ───────────────────────────────────────────────────────
-function FAB({ onPress }) {
+function FAB({ onPress, themeLight, themeDeep }) {
+  const tl = themeLight || '#ff8a73', td = themeDeep || '#e85d4f';
   return (
-    <button onClick={onPress} style={{ position:'fixed', right:22, bottom:'calc(env(safe-area-inset-bottom,0px) + 92px)', width:64, height:64, borderRadius:22, background:'linear-gradient(135deg,#ff8a73 0%,#e85d4f 100%)', color:'#fff', fontSize:32, fontWeight:300, lineHeight:1, boxShadow:'0 10px 24px rgba(232,93,79,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99 }}>
+    <button onClick={onPress} style={{ position:'fixed', right:22, bottom:'calc(env(safe-area-inset-bottom,0px) + 92px)', width:64, height:64, borderRadius:22, background:`linear-gradient(135deg,${tl} 0%,${td} 100%)`, color:'#fff', fontSize:32, fontWeight:300, lineHeight:1, boxShadow:`0 10px 24px ${hexToRgba(td,0.4)}`, display:'flex', alignItems:'center', justifyContent:'center', zIndex:99 }}>
       +
     </button>
   );
 }
 
 // ─── Dashboard ─────────────────────────────────────────────────
-function Dashboard({ state, bucketStats, totals, onBucketPress, onAddExpense, onExpensePress }) {
+function Dashboard({ state, bucketStats, totals, onBucketPress, onAddExpense, onExpensePress, onBellaPress }) {
   const { buckets, streakWeeks } = state;
   const { weekLeft, weekBudget, weekSpent } = totals;
+  const themeLight = state.themeLight || '#ff8a73';
+  const themeDeep  = state.themeDeep  || '#e85d4f';
   const dayBudget = Math.round(weekBudget / 7);
 
   const todayIdx = (() => { const d = new Date().getDay(); return d===0 ? 6 : d-1; })();
   const days = ['M','T','W','T','F','S','S'];
 
-  const featured = buckets.slice(0, 6);
+  const featured = [...buckets].sort((a, b) =>
+    ((bucketStats[b.id] || {}).monthSpent || 0) - ((bucketStats[a.id] || {}).monthSpent || 0)
+  );
 
   const recent = [...state.expenses]
     .sort((a,b) => new Date(b.date)-new Date(a.date))
@@ -284,54 +328,31 @@ function Dashboard({ state, bucketStats, totals, onBucketPress, onAddExpense, on
       {/* Header */}
       <div style={{ padding:'4px 18px 6px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <div>
-          <div style={{ fontSize:13, fontWeight:800, color:'#8b6f5e' }}>Hi Bella ☀️</div>
+          <div style={{ fontSize:13, fontWeight:800, color:'#8b6f5e' }}>Hi {state.profileName || 'Bella'} ☀️</div>
           <div style={{ fontSize:22, fontWeight:800, color:'#3d2419', letterSpacing:-0.6, marginTop:-2 }}>This&nbsp;week</div>
         </div>
-        <div style={{ padding:'8px 12px', borderRadius:14, background:'#3d2419', color:'#fff', fontSize:12, fontWeight:800, display:'flex', alignItems:'center', gap:6 }}>
+        <button onClick={onBellaPress} style={{ padding:'8px 12px', borderRadius:14, background:'#3d2419', color:'#fff', fontSize:12, fontWeight:800, display:'flex', alignItems:'center', gap:6 }}>
           {streakWeeks > 0 ? `🏆 ${streakWeeks}-wk` : '🎯 Challenge'}
-        </div>
+        </button>
       </div>
 
       <div style={{ padding:'8px 14px 0', display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }}>
         {/* Hero tile */}
-        <div style={{ gridColumn:'1/-1', background:'linear-gradient(135deg,#ff8a73 0%,#e85d4f 100%)', color:'#fff', borderRadius:24, padding:'20px 22px 18px', position:'relative', overflow:'hidden', minHeight:152 }}>
+        <div style={{ gridColumn:'1/-1', background:`linear-gradient(135deg,${themeLight} 0%,${themeDeep} 100%)`, color:'#fff', borderRadius:24, padding:'20px 22px 18px', position:'relative', overflow:'hidden', minHeight:152 }}>
           <div style={{ position:'absolute', right:-32, top:-32, width:140, height:140, borderRadius:999, background:'rgba(255,255,255,0.14)', pointerEvents:'none' }} />
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', position:'relative' }}>
-            <div style={{ fontSize:11, fontWeight:800, letterSpacing:1.2, textTransform:'uppercase', opacity:0.85 }}>Left this week</div>
-            <div style={{ textAlign:'right' }}>
-              <div style={{ fontSize:10, fontWeight:800, letterSpacing:1.1, textTransform:'uppercase', opacity:0.7 }}>Spent</div>
-              <div className="tnum" style={{ fontSize:26, fontWeight:800, letterSpacing:-0.8, lineHeight:1, marginTop:1 }}>{fmt(weekSpent)}</div>
-            </div>
+          <div style={{ position:'absolute', top:20, right:22, textAlign:'right' }}>
+            <div style={{ fontSize:12, fontWeight:800, letterSpacing:1.1, textTransform:'uppercase', opacity:0.7 }}>Spent</div>
+            <div className="tnum" style={{ fontSize:36, fontWeight:800, letterSpacing:-1.2, lineHeight:1, marginTop:1 }}>{fmt(weekSpent)}</div>
           </div>
+          <div style={{ fontSize:11, fontWeight:800, letterSpacing:1.2, textTransform:'uppercase', opacity:0.85 }}>Left this week</div>
           <div className="tnum" style={{ fontSize:64, fontWeight:800, letterSpacing:-2.6, lineHeight:1, marginTop:4 }}>{fmt(weekLeft)}</div>
           <div style={{ marginTop:6, fontSize:13, fontWeight:700, opacity:0.95 }}>of {fmt(weekBudget)} · {fmt(dayBudget)}/day to stay on track</div>
           <div style={{ marginTop:14, display:'flex', gap:6 }}>
             {days.map((d,i) => (
-              <div key={i} style={{ flex:1, height:28, borderRadius:8, background: i===todayIdx?'#fff': i<todayIdx?'rgba(255,255,255,0.42)':'rgba(255,255,255,0.18)', color: i===todayIdx?'#e85d4f':'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800 }}>{d}</div>
+              <div key={i} style={{ flex:1, height:28, borderRadius:8, background: i===todayIdx?'#fff': i<todayIdx?'rgba(255,255,255,0.42)':'rgba(255,255,255,0.18)', color: i===todayIdx?themeDeep:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800 }}>{d}</div>
             ))}
           </div>
         </div>
-
-        {/* Bucket tiles */}
-        {featured.map(b => {
-          const s = bucketStats[b.id] || { monthSpent:0 };
-          const left = Math.max(0, b.monthly - s.monthSpent);
-          const p    = pct(s.monthSpent, b.monthly);
-          const tight = p > 85;
-          return (
-            <button key={b.id} onClick={() => onBucketPress(b.id)} style={{ background:'#fff', borderRadius:22, padding:'14px 14px 12px', position:'relative', overflow:'hidden', border:'1px solid rgba(92,61,46,0.08)', minHeight:116, textAlign:'left' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <div style={{ width:44, height:44, borderRadius:14, background:b.color, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0, boxShadow:`0 4px 10px ${b.color}55` }}>{b.icon}</div>
-                <div style={{ fontSize:17, fontWeight:800, color:'#3d2419', lineHeight:1.2 }}>{b.name}</div>
-              </div>
-              <div className="tnum" style={{ marginTop:10, fontSize:22, fontWeight:800, color: tight?'#e85d4f':'#3d2419', letterSpacing:-0.6, lineHeight:1 }}>{fmt(left)}</div>
-              <div style={{ fontSize:10, fontWeight:700, color:'#b8a193', marginTop:2 }}>left of {fmt(b.monthly)}</div>
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:4, background:b.color+'22' }}>
-                <div style={{ height:'100%', width:p+'%', background: tight?'#e85d4f':b.color }} />
-              </div>
-            </button>
-          );
-        })}
 
         {/* Recent row */}
         {recent.length > 0 && (
@@ -347,6 +368,30 @@ function Dashboard({ state, bucketStats, totals, onBucketPress, onAddExpense, on
             </div>
           </div>
         )}
+
+        {/* Bucket tiles */}
+        {featured.map(b => {
+          const s = bucketStats[b.id] || { monthSpent:0 };
+          const left = Math.max(0, b.monthly - s.monthSpent);
+          const p    = pct(s.monthSpent, b.monthly);
+          const tight = p > 85;
+          return (
+            <button key={b.id} onClick={() => onBucketPress(b.id)} style={{ background:'#fff', borderRadius:22, padding:'14px 14px 12px', position:'relative', overflow:'hidden', border:'1px solid rgba(92,61,46,0.08)', minHeight:116, textAlign:'left' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <div style={{ width:44, height:44, borderRadius:14, background:b.color, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0, boxShadow:`0 4px 10px ${b.color}55` }}>{b.icon}</div>
+                <div style={{ fontSize:17, fontWeight:800, color:'#3d2419', lineHeight:1.2 }}>{b.name}</div>
+              </div>
+              <div style={{ display:'flex', alignItems:'baseline', gap:6, marginTop:10 }}>
+                <div className="tnum" style={{ fontSize:22, fontWeight:800, color: tight?'#e85d4f':'#3d2419', letterSpacing:-0.6, lineHeight:1 }}>{fmt(left)}</div>
+                <div style={{ fontSize:18, fontWeight:700, color:'#b8a193' }}>left of {fmt(b.monthly)}</div>
+              </div>
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:4, background:b.color+'22' }}>
+                <div style={{ height:'100%', width:p+'%', background: tight?'#e85d4f':b.color }} />
+              </div>
+            </button>
+          );
+        })}
+
       </div>
     </div>
   );
@@ -354,6 +399,8 @@ function Dashboard({ state, bucketStats, totals, onBucketPress, onAddExpense, on
 
 // ─── Add Expense ───────────────────────────────────────────────
 function AddExpense({ state, defaultBucketId, onSave, onClose }) {
+  const themeLight = state.themeLight || '#ff8a73';
+  const themeDeep  = state.themeDeep  || '#e85d4f';
   const [amountStr, setAmountStr] = useState('');
   const [merchant, setMerchant]   = useState('');
   const [bucketId, setBucketId]   = useState(defaultBucketId || state.buckets[0]?.id || '');
@@ -392,7 +439,7 @@ function AddExpense({ state, defaultBucketId, onSave, onClose }) {
 
       {/* Amount tile */}
       <div style={{ padding:'8px 14px 0' }}>
-        <div style={{ background:'linear-gradient(135deg,#ff8a73 0%,#e85d4f 100%)', borderRadius:24, padding:'20px 24px 22px', color:'#fff', textAlign:'center', position:'relative', overflow:'hidden' }}>
+        <div style={{ background:`linear-gradient(135deg,${themeLight} 0%,${themeDeep} 100%)`, borderRadius:24, padding:'20px 24px 22px', color:'#fff', textAlign:'center', position:'relative', overflow:'hidden' }}>
           <div style={{ position:'absolute', right:-40, bottom:-40, width:140, height:140, borderRadius:999, background:'rgba(255,255,255,0.10)', pointerEvents:'none' }} />
           <div style={{ fontSize:11, fontWeight:800, letterSpacing:1.2, textTransform:'uppercase', opacity:0.85 }}>Amount</div>
           <div className="tnum" style={{ fontSize:64, fontWeight:800, letterSpacing:-2.4, lineHeight:1, marginTop:6 }}>
@@ -412,11 +459,11 @@ function AddExpense({ state, defaultBucketId, onSave, onClose }) {
       <div style={{ padding:'12px 14px 0' }}>
         <div style={{ fontSize:11, fontWeight:800, color:'#8b6f5e', textTransform:'uppercase', letterSpacing:1.2, marginBottom:8, paddingLeft:4 }}>Bucket</div>
         <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-          {state.buckets.slice(0,8).map(b => {
+          {state.buckets.map(b => {
             const sel = b.id===bucketId;
             return (
-              <button key={b.id} onClick={() => setBucketId(b.id)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 12px', borderRadius:14, background: sel?b.color:'#fff', color: sel?'#fff':'#5c3d2e', fontSize:12, fontWeight:800, border: sel?'none':'1px solid rgba(92,61,46,0.08)', boxShadow: sel?`0 6px 14px ${b.color}55`:'none' }}>
-                <span style={{ fontSize:14 }}>{b.icon}</span>{b.name}
+              <button key={b.id} onClick={() => setBucketId(b.id)} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'11px 16px', borderRadius:16, background: sel?b.color:'#fff', color: sel?'#fff':'#5c3d2e', fontSize:15, fontWeight:800, border: sel?'none':'1px solid rgba(92,61,46,0.08)', boxShadow: sel?`0 6px 14px ${b.color}55`:'none' }}>
+                <span style={{ fontSize:18 }}>{b.icon}</span>{b.name}
               </button>
             );
           })}
@@ -528,44 +575,77 @@ function BucketDetail({ bucket, stats, onBack, onAddExpense, onExpensePress }) {
 }
 
 // ─── Manage Buckets ────────────────────────────────────────────
-function ManageBuckets({ state, bucketStats, onBucketEdit, onAddBucket, onClose }) {
+function ManageBuckets({ state, bucketStats, onBucketEdit, onAddBucket, onClose, onReorder }) {
+  const [reordering, setReordering] = useState(false);
   const totalMonthly = state.buckets.reduce((s,b) => s+b.monthly, 0);
+
+  const move = (i, dir) => {
+    const ids = state.buckets.map(b => b.id);
+    const j = i + dir;
+    if (j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    onReorder(ids);
+  };
+
   return (
     <div className="scroll" style={{ height:'100vh', background:'#fff5ee', paddingBottom:180 }}>
       <div style={{ height:'env(safe-area-inset-top,44px)' }} />
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 18px 4px' }}>
-        <button onClick={onClose} style={{ fontSize:14, fontWeight:800, color:'#8b6f5e' }}>Done</button>
+        <div style={{ minWidth:52 }} />
         <div style={{ fontSize:16, fontWeight:800, color:'#3d2419' }}>Buckets</div>
-        <div style={{ fontSize:14, fontWeight:800, color:'#e85d4f', minWidth:52, textAlign:'right' }}>Reorder</div>
-      </div>
-      <div style={{ padding:'4px 18px 12px', fontSize:13, fontWeight:700, color:'#8b6f5e' }}>
-        Tap any tile to edit. <span style={{ color:'#3d2419' }}>{fmt(totalMonthly)}/month</span> total.
-      </div>
-
-      <div style={{ padding:'4px 14px 24px', display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }}>
-        {state.buckets.map(b => {
-          const s = bucketStats[b.id] || { monthSpent:0 };
-          const p = pct(s.monthSpent, b.monthly);
-          return (
-            <button key={b.id} onClick={() => onBucketEdit(b.id)} style={{ background:b.color, color:'#fff', borderRadius:22, padding:'14px 14px 18px', position:'relative', overflow:'hidden', minHeight:108, textAlign:'left' }}>
-              <div style={{ position:'absolute', right:-20, top:-20, width:80, height:80, borderRadius:999, background:'rgba(255,255,255,0.16)', pointerEvents:'none' }} />
-              <div style={{ display:'flex', alignItems:'center', gap:10, position:'relative' }}>
-                <div style={{ fontSize:26 }}>{b.icon}</div>
-                <div style={{ fontSize:17, fontWeight:800, lineHeight:1.2 }}>{b.name}</div>
-              </div>
-              <div className="tnum" style={{ fontSize:11, fontWeight:700, opacity:0.9, marginTop:8, position:'relative' }}>{fmt(b.monthly)}/mo</div>
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:4, background:'rgba(255,255,255,0.25)' }}>
-                <div style={{ height:'100%', width:p+'%', background:'#fff', borderRadius:999 }} />
-              </div>
-              <div style={{ position:'absolute', right:10, bottom:12, width:20, height:20, borderRadius:999, background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 }}>✎</div>
-            </button>
-          );
-        })}
-
-        <button onClick={onAddBucket} style={{ gridColumn:'1/-1', border:'1.5px dashed #ffb59f', borderRadius:22, padding:18, display:'flex', alignItems:'center', justifyContent:'center', gap:8, color:'#e85d4f', fontSize:14, fontWeight:800, background:'transparent' }}>
-          <span style={{ fontSize:22, fontWeight:300 }}>+</span> Add a new bucket
+        <button onClick={() => setReordering(r => !r)} style={{ fontSize:14, fontWeight:800, color:'#e85d4f', minWidth:52, textAlign:'right' }}>
+          {reordering ? 'Done' : 'Reorder'}
         </button>
       </div>
+      <div style={{ padding:'4px 18px 12px', fontSize:13, fontWeight:700, color:'#8b6f5e' }}>
+        {reordering
+          ? 'Use the arrows to reorder your buckets.'
+          : <span>Tap any tile to edit. <span style={{ color:'#3d2419' }}>{fmt(totalMonthly)}/month</span> total.</span>}
+      </div>
+
+      {reordering ? (
+        /* ── Reorder list ── */
+        <div style={{ padding:'4px 14px 24px', display:'flex', flexDirection:'column', gap:8 }}>
+          {state.buckets.map((b, i) => (
+            <div key={b.id} style={{ display:'flex', alignItems:'center', gap:12, background:'#fff', borderRadius:18, padding:'12px 14px', border:'1px solid rgba(92,61,46,0.08)' }}>
+              <div style={{ width:44, height:44, borderRadius:14, background:b.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>{b.icon}</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:16, fontWeight:800, color:'#3d2419' }}>{b.name}</div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#b8a193' }}>{fmt(b.monthly)}/mo</div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                <button onClick={() => move(i, -1)} disabled={i === 0} style={{ width:36, height:36, borderRadius:10, background: i===0 ? 'rgba(92,61,46,0.05)' : 'rgba(92,61,46,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, color: i===0 ? '#d0b8a8' : '#3d2419', opacity: i===0 ? 0.4 : 1 }}>↑</button>
+                <button onClick={() => move(i,  1)} disabled={i === state.buckets.length-1} style={{ width:36, height:36, borderRadius:10, background: i===state.buckets.length-1 ? 'rgba(92,61,46,0.05)' : 'rgba(92,61,46,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, color: i===state.buckets.length-1 ? '#d0b8a8' : '#3d2419', opacity: i===state.buckets.length-1 ? 0.4 : 1 }}>↓</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* ── Normal grid ── */
+        <div style={{ padding:'4px 14px 24px', display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }}>
+          {state.buckets.map(b => {
+            const s = bucketStats[b.id] || { monthSpent:0 };
+            const p = pct(s.monthSpent, b.monthly);
+            return (
+              <button key={b.id} onClick={() => onBucketEdit(b.id)} style={{ background:b.color, color:'#fff', borderRadius:22, padding:'14px 14px 18px', position:'relative', overflow:'hidden', minHeight:108, textAlign:'left' }}>
+                <div style={{ position:'absolute', right:-20, top:-20, width:80, height:80, borderRadius:999, background:'rgba(255,255,255,0.16)', pointerEvents:'none' }} />
+                <div style={{ display:'flex', alignItems:'center', gap:10, position:'relative' }}>
+                  <div style={{ fontSize:26 }}>{b.icon}</div>
+                  <div style={{ fontSize:17, fontWeight:800, lineHeight:1.2 }}>{b.name}</div>
+                </div>
+                <div className="tnum" style={{ fontSize:18, fontWeight:700, opacity:0.9, marginTop:8, position:'relative' }}>{fmt(b.monthly)}/mo</div>
+                <div style={{ position:'absolute', bottom:0, left:0, right:0, height:4, background:'rgba(255,255,255,0.25)' }}>
+                  <div style={{ height:'100%', width:p+'%', background:'#fff', borderRadius:999 }} />
+                </div>
+                <div style={{ position:'absolute', right:10, bottom:12, width:20, height:20, borderRadius:999, background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 }}>✎</div>
+              </button>
+            );
+          })}
+          <button onClick={onAddBucket} style={{ gridColumn:'1/-1', border:'1.5px dashed #ffb59f', borderRadius:22, padding:18, display:'flex', alignItems:'center', justifyContent:'center', gap:8, color:'#e85d4f', fontSize:14, fontWeight:800, background:'transparent' }}>
+            <span style={{ fontSize:22, fontWeight:300 }}>+</span> Add a new bucket
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -575,6 +655,8 @@ const PRESET_COLORS = [
   '#7da882','#ff8a73','#e8a060','#ffb59f','#d97a85',
   '#9c6b8f','#e8b860','#a8a566','#e85d4f','#b8a193',
   '#5c9fcc','#e87070','#70c0a0','#c0a070','#8870c0',
+  '#f4b8c8','#88c8d8','#f0d490','#a8d8c0','#d0b0d8',
+  '#e8c8a0','#c8d8a8','#f0b8a0','#a8b8d8','#d8b0a0',
 ];
 
 function EditBucketModal({ bucket, isNew, onSave, onDelete, onClose }) {
@@ -745,11 +827,14 @@ function EditExpenseModal({ expense, buckets, onSave, onDelete, onClose }) {
 // ─── Trends ────────────────────────────────────────────────────
 function Trends({ state, bucketStats, totals }) {
   const { monthlyBudget, monthSpent } = totals;
+  const themeLight = state.themeLight || '#ff8a73';
+  const themeDeep  = state.themeDeep  || '#e85d4f';
   const now        = new Date();
   const daysInMo   = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
   const dayOfMo    = now.getDate();
-  const projected  = Math.round((monthSpent/dayOfMo)*daysInMo);
   const remaining  = Math.max(0, monthlyBudget - monthSpent);
+  const daysLeft   = daysInMo - dayOfMo;
+  const dailyLeft  = daysLeft > 0 ? Math.round(remaining / daysLeft) : remaining;
   const pctUsed    = pct(monthSpent, monthlyBudget);
 
   return (
@@ -762,19 +847,19 @@ function Trends({ state, bucketStats, totals }) {
 
       {/* Hero */}
       <div style={{ margin:'0 14px 10px' }}>
-        <div style={{ background:'linear-gradient(135deg,#ff8a73 0%,#e85d4f 100%)', borderRadius:24, padding:'20px 22px', color:'#fff', position:'relative', overflow:'hidden' }}>
+        <div style={{ background:`linear-gradient(135deg,${themeLight} 0%,${themeDeep} 100%)`, borderRadius:24, padding:'20px 22px', color:'#fff', position:'relative', overflow:'hidden' }}>
           <div style={{ position:'absolute', right:-32, top:-32, width:120, height:120, borderRadius:999, background:'rgba(255,255,255,0.12)', pointerEvents:'none' }} />
           <div style={{ fontSize:11, fontWeight:800, letterSpacing:1.2, textTransform:'uppercase', opacity:0.85 }}>This month</div>
           <div style={{ display:'flex', alignItems:'baseline', gap:8, marginTop:6 }}>
             <div className="tnum" style={{ fontSize:48, fontWeight:800, letterSpacing:-2, lineHeight:1 }}>{fmt(monthSpent)}</div>
-            <div style={{ fontSize:14, fontWeight:700, opacity:0.8 }}>of {fmt(monthlyBudget)}</div>
+            <div style={{ fontSize:20, fontWeight:700, opacity:0.8 }}>of {fmt(monthlyBudget)}</div>
           </div>
           <div style={{ marginTop:10, height:8, borderRadius:999, background:'rgba(255,255,255,0.25)', overflow:'hidden' }}>
             <div style={{ width:pctUsed+'%', height:'100%', background:'#fff', borderRadius:999 }} />
           </div>
           <div style={{ marginTop:10, display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
             <div><div style={{ fontSize:10, fontWeight:800, opacity:0.7, textTransform:'uppercase', letterSpacing:1 }}>Remaining</div><div className="tnum" style={{ fontSize:20, fontWeight:800 }}>{fmt(remaining)}</div></div>
-            <div><div style={{ fontSize:10, fontWeight:800, opacity:0.7, textTransform:'uppercase', letterSpacing:1 }}>Projected</div><div className="tnum" style={{ fontSize:20, fontWeight:800, color: projected>monthlyBudget?'#ffd5c2':'#fff' }}>{fmt(projected)}</div></div>
+            <div><div style={{ fontSize:10, fontWeight:800, opacity:0.7, textTransform:'uppercase', letterSpacing:1 }}>Per day left</div><div className="tnum" style={{ fontSize:20, fontWeight:800 }}>{fmt(dailyLeft)}</div></div>
           </div>
         </div>
       </div>
@@ -789,12 +874,12 @@ function Trends({ state, bucketStats, totals }) {
             <div key={b.id} style={{ padding:'10px 0', borderBottom: i<state.buckets.length-1?'1px solid rgba(92,61,46,0.06)':'none' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <div style={{ width:28, height:28, borderRadius:8, background:b.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>{b.icon}</div>
-                  <div style={{ fontSize:13, fontWeight:800, color:'#3d2419' }}>{b.name}</div>
+                  <div style={{ width:36, height:36, borderRadius:10, background:b.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>{b.icon}</div>
+                  <div style={{ fontSize:17, fontWeight:800, color:'#3d2419' }}>{b.name}</div>
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                  <div className="tnum" style={{ fontSize:13, fontWeight:800, color: tight?'#e85d4f':'#3d2419' }}>{fmt(s.monthSpent)}</div>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#b8a193' }}>/ {fmt(b.monthly)}</div>
+                  <div className="tnum" style={{ fontSize:17, fontWeight:800, color: tight?'#e85d4f':'#3d2419' }}>{fmt(s.monthSpent)}</div>
+                  <div style={{ fontSize:14, fontWeight:700, color:'#b8a193' }}>/ {fmt(b.monthly)}</div>
                 </div>
               </div>
               <div style={{ height:6, borderRadius:999, background:b.color+'22', overflow:'hidden' }}>
@@ -811,13 +896,17 @@ function Trends({ state, bucketStats, totals }) {
 // ─── Edit Profile Modal ────────────────────────────────────────
 const PROFILE_EMOJIS = ['🌱','🌸','🌺','🦋','🌻','🌈','⭐','🎀','🍀','🌙','✨','🌷'];
 
-function EditProfileModal({ profileEmoji, profileName, onSave, onClose }) {
-  const [emoji, setEmoji] = useState(profileEmoji || '🌱');
-  const [name,  setName]  = useState(profileName  || 'Bella');
+function EditProfileModal({ profileEmoji, profileName, themeLight, themeDeep, onSave, onClose }) {
+  const [emoji,   setEmoji]   = useState(profileEmoji || '🌱');
+  const [name,    setName]    = useState(profileName  || 'Bella');
+  const [selLight, setSelLight] = useState(themeLight || '#ff8a73');
+  const [selDeep,  setSelDeep]  = useState(themeDeep  || '#e85d4f');
+
+  const pickTheme = (color) => { setSelLight(color); setSelDeep(darkenHex(color)); };
 
   const handleSave = () => {
     if (!name.trim()) return;
-    onSave({ profileEmoji: emoji, profileName: name.trim() });
+    onSave({ profileEmoji: emoji, profileName: name.trim(), themeLight: selLight, themeDeep: selDeep });
     onClose();
   };
 
@@ -831,7 +920,20 @@ function EditProfileModal({ profileEmoji, profileName, onSave, onClose }) {
 
         {/* Live preview */}
         <div style={{ display:'flex', justifyContent:'center', marginBottom:20 }}>
-          <div style={{ width:88, height:88, borderRadius:32, background:'linear-gradient(135deg,#ff8a73,#e85d4f)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:44, boxShadow:'0 12px 28px rgba(232,93,79,0.28)' }}>{emoji || '?'}</div>
+          <div style={{ width:88, height:88, borderRadius:32, background:`linear-gradient(135deg,${selLight},${selDeep})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:44, boxShadow:`0 12px 28px ${hexToRgba(selDeep,0.28)}` }}>{emoji || '?'}</div>
+        </div>
+
+        {/* App color picker */}
+        <div style={{ marginBottom:16 }}>
+          <div style={{ fontSize:11, fontWeight:800, color:'#8b6f5e', textTransform:'uppercase', letterSpacing:1.2, marginBottom:8 }}>App color</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+            {PRESET_COLORS.map((c,i) => {
+              const sel = c === selLight;
+              return (
+                <button key={i} onClick={() => pickTheme(c)} style={{ width:44, height:44, borderRadius:12, background:c, border: sel ? '3px solid #3d2419' : '3px solid transparent', transform: sel ? 'scale(1.12)' : 'scale(1)', transition:'transform .15s', boxShadow: sel ? '0 4px 12px rgba(0,0,0,0.2)' : 'none' }} />
+              );
+            })}
+          </div>
         </div>
 
         {/* Quick emoji grid */}
@@ -869,8 +971,10 @@ function EditProfileModal({ profileEmoji, profileName, onSave, onClose }) {
 function BellaProfile({ state, totals, clearExpenses, updateProfile }) {
   const { monthlyBudget, weekBudget, weekSpent, weekLeft } = totals;
   const totalExpenses   = state.expenses.length;
-  const profileEmoji    = state.profileEmoji || '🌱';
-  const profileName     = state.profileName  || 'Bella';
+  const profileEmoji    = state.profileEmoji  || '🌱';
+  const profileName     = state.profileName   || 'Bella';
+  const themeLight      = state.themeLight    || '#ff8a73';
+  const themeDeep       = state.themeDeep     || '#e85d4f';
   const [showEdit,      setShowEdit]      = useState(false);
   const [clearConfirm,  setClearConfirm]  = useState(false);
 
@@ -883,13 +987,13 @@ function BellaProfile({ state, totals, clearExpenses, updateProfile }) {
         <div style={{ height:'env(safe-area-inset-top,44px)' }} />
         <div style={{ padding:'4px 18px 16px' }}>
           <div style={{ fontSize:13, fontWeight:800, color:'#8b6f5e' }}>Settings</div>
-          <div style={{ fontSize:22, fontWeight:800, color:'#3d2419', letterSpacing:-0.6, marginTop:-2 }}>Bella</div>
+          <div style={{ fontSize:22, fontWeight:800, color:'#3d2419', letterSpacing:-0.6, marginTop:-2 }}>{profileName}</div>
         </div>
 
         {/* Avatar — tappable */}
         <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
           <button onClick={() => setShowEdit(true)} style={{ position:'relative', display:'inline-block', background:'none' }}>
-            <div style={{ width:88, height:88, borderRadius:32, background:'linear-gradient(135deg,#ff8a73,#e85d4f)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:40, boxShadow:'0 12px 28px rgba(232,93,79,0.28)' }}>{profileEmoji}</div>
+            <div style={{ width:88, height:88, borderRadius:32, background:`linear-gradient(135deg,${themeLight},${themeDeep})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:40, boxShadow:`0 12px 28px ${hexToRgba(themeDeep,0.28)}` }}>{profileEmoji}</div>
             <div style={{ position:'absolute', bottom:-4, right:-4, width:26, height:26, borderRadius:10, background:'#3d2419', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, color:'#fff', boxShadow:'0 4px 8px rgba(61,36,25,0.3)' }}>✎</div>
           </button>
         </div>
@@ -980,6 +1084,8 @@ function BellaProfile({ state, totals, clearExpenses, updateProfile }) {
         <EditProfileModal
           profileEmoji={profileEmoji}
           profileName={profileName}
+          themeLight={themeLight}
+          themeDeep={themeDeep}
           onSave={updateProfile}
           onClose={() => setShowEdit(false)}
         />
@@ -990,7 +1096,7 @@ function BellaProfile({ state, totals, clearExpenses, updateProfile }) {
 
 // ─── App ───────────────────────────────────────────────────────
 function App() {
-  const { state, bucketStats, totals, addExpense, updateExpense, updateBucket, addBucket, deleteBucket, deleteExpense, clearExpenses, updateProfile } = useAppState();
+  const { state, bucketStats, totals, addExpense, updateExpense, updateBucket, addBucket, deleteBucket, deleteExpense, clearExpenses, updateProfile, reorderBuckets } = useAppState();
 
   const [tab,              setTab]              = useState('today');
   const [detailBucketId,   setDetailBucketId]   = useState(null);
@@ -1051,9 +1157,9 @@ function App() {
           onExpensePress={openExpenseEdit}
         />
       ) : tab === 'today' ? (
-        <Dashboard state={state} bucketStats={bucketStats} totals={totals} onBucketPress={openBucketDetail} onAddExpense={() => openAddExpense()} onExpensePress={openExpenseEdit} />
+        <Dashboard state={state} bucketStats={bucketStats} totals={totals} onBucketPress={openBucketDetail} onAddExpense={() => openAddExpense()} onExpensePress={openExpenseEdit} onBellaPress={() => handleTabChange('bella')} />
       ) : tab === 'buckets' ? (
-        <ManageBuckets state={state} bucketStats={bucketStats} onBucketEdit={handleBucketEdit} onAddBucket={handleAddBucket} onClose={() => setTab('today')} />
+        <ManageBuckets state={state} bucketStats={bucketStats} onBucketEdit={handleBucketEdit} onAddBucket={handleAddBucket} onClose={() => setTab('today')} onReorder={reorderBuckets} />
       ) : tab === 'trends' ? (
         <Trends state={state} bucketStats={bucketStats} totals={totals} />
       ) : (
@@ -1063,8 +1169,8 @@ function App() {
       {/* Tab bar + FAB — hidden in bucket detail */}
       {!showDetail && (
         <>
-          <TabBar tab={tab} onTab={handleTabChange} />
-          <FAB onPress={() => openAddExpense()} />
+          <TabBar tab={tab} onTab={handleTabChange} profileName={state.profileName || 'Bella'} themeLight={state.themeLight} />
+          <FAB onPress={() => openAddExpense()} themeLight={state.themeLight} themeDeep={state.themeDeep} />
         </>
       )}
 
