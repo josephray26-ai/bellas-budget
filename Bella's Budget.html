@@ -264,7 +264,7 @@ function FAB({ onPress }) {
 // ─── Dashboard ─────────────────────────────────────────────────
 function Dashboard({ state, bucketStats, totals, onBucketPress, onAddExpense, onExpensePress }) {
   const { buckets, streakWeeks } = state;
-  const { weekLeft, weekBudget } = totals;
+  const { weekLeft, weekBudget, weekSpent } = totals;
   const dayBudget = Math.round(weekBudget / 7);
 
   const todayIdx = (() => { const d = new Date().getDay(); return d===0 ? 6 : d-1; })();
@@ -296,7 +296,13 @@ function Dashboard({ state, bucketStats, totals, onBucketPress, onAddExpense, on
         {/* Hero tile */}
         <div style={{ gridColumn:'1/-1', background:'linear-gradient(135deg,#ff8a73 0%,#e85d4f 100%)', color:'#fff', borderRadius:24, padding:'20px 22px 18px', position:'relative', overflow:'hidden', minHeight:152 }}>
           <div style={{ position:'absolute', right:-32, top:-32, width:140, height:140, borderRadius:999, background:'rgba(255,255,255,0.14)', pointerEvents:'none' }} />
-          <div style={{ fontSize:11, fontWeight:800, letterSpacing:1.2, textTransform:'uppercase', opacity:0.85 }}>Left this week</div>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', position:'relative' }}>
+            <div style={{ fontSize:11, fontWeight:800, letterSpacing:1.2, textTransform:'uppercase', opacity:0.85 }}>Left this week</div>
+            <div style={{ textAlign:'right' }}>
+              <div style={{ fontSize:10, fontWeight:800, letterSpacing:1.1, textTransform:'uppercase', opacity:0.7 }}>Spent</div>
+              <div className="tnum" style={{ fontSize:26, fontWeight:800, letterSpacing:-0.8, lineHeight:1, marginTop:1 }}>{fmt(weekSpent)}</div>
+            </div>
+          </div>
           <div className="tnum" style={{ fontSize:64, fontWeight:800, letterSpacing:-2.6, lineHeight:1, marginTop:4 }}>{fmt(weekLeft)}</div>
           <div style={{ marginTop:6, fontSize:13, fontWeight:700, opacity:0.95 }}>of {fmt(weekBudget)} · {fmt(dayBudget)}/day to stay on track</div>
           <div style={{ marginTop:14, display:'flex', gap:6 }}>
